@@ -3,22 +3,40 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, FileDown } from "lucide-react";
-import { PDFViewer } from "@/components/pdf-viewer/pdf-viewer";
+import { PreviewWindow } from "@/components/pdf-viewer/pdf-viewer";
 import { PDFTools } from "@/components/pdf-viewer/pdf-tools";
 import { isValidPDF } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { PDFDocument } from "pdf-lib";
 
 export default function Home() {
 	const [files, setFiles] = useState<File[]>([]);
 	const [currentFile, setCurrentFile] = useState<File | null>(null);
+	const [pageCount, setPageCount] = useState<number>(0);
+	const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null);
 	const { toast } = useToast();
 
+	const calculatePageCount = async (file: File) => {
+		try {
+			const arrayBuffer = await file.arrayBuffer();
+			const pdf = await PDFDocument.load(arrayBuffer);
+			return pdf.getPageCount();
+		} catch (error) {
+			console.error("Error calculating page count:", error);
+			return 0;
+		}
+	};
+
 	const handleFileUpload = useCallback(
-		(event: React.ChangeEvent<HTMLInputElement>) => {
+		async (event: React.ChangeEvent<HTMLInputElement>) => {
 			const uploadedFiles = Array.from(event.target.files || []).filter(isValidPDF);
 			if (uploadedFiles.length > 0) {
 				setFiles((prev) => [...prev, ...uploadedFiles]);
-				setCurrentFile(uploadedFiles[0]);
+				const firstFile = uploadedFiles[0];
+				setCurrentFile(firstFile);
+				const count = await calculatePageCount(firstFile);
+				setPageCount(count);
+				setSelectedRange(null);
 				toast({
 					title: "Files added",
 					description: `Added ${uploadedFiles.length} PDF file(s)`,
@@ -62,8 +80,15 @@ export default function Home() {
 		[toast]
 	);
 
-	const handleFileSelect = useCallback((file: File) => {
+	const handleFileSelect = useCallback(async (file: File) => {
 		setCurrentFile(file);
+		const count = await calculatePageCount(file);
+		setPageCount(count);
+		setSelectedRange(null);
+	}, []);
+
+	const handleRangeChange = useCallback((range: { start: number; end: number } | null) => {
+		setSelectedRange(range);
 	}, []);
 
 	const handleDelete = useCallback(
@@ -117,15 +142,17 @@ export default function Home() {
 						<PDFTools
 							files={files}
 							currentFile={currentFile}
+							pageCount={pageCount}
 							onFileSelect={handleFileSelect}
 							onMerge={handleMerge}
 							onExtract={handleExtract}
 							onCompress={handleCompress}
 							onDelete={handleDelete}
+							onRangeChange={handleRangeChange}
 						/>
 					</div>
 					<div className="flex-1 bg-white rounded-lg shadow overflow-hidden">
-						<PDFViewer file={currentFile} />
+						<PreviewWindow file={currentFile} selectedRange={selectedRange} />
 					</div>
 				</div>
 			</div>
