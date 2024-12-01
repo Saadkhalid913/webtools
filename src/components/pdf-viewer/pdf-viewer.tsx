@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Worker, Viewer } from "@react-pdf-viewer/core";
+import { Worker, Viewer, RenderPage, VisiblePagesRange } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import { searchPlugin } from "@react-pdf-viewer/search";
 import { thumbnailPlugin } from "@react-pdf-viewer/thumbnail";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
-import type { RenderPage } from "@react-pdf-viewer/core";
+
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import "@react-pdf-viewer/thumbnail/lib/styles/index.css";
@@ -21,6 +21,7 @@ interface PreviewWindowProps {
 export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRange, onPageChange }) => {
 	const [fileUrl, setFileUrl] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [currentPage, setCurrentPage] = useState<number>(0);
 
 	useEffect(() => {
 		if (file) {
@@ -35,16 +36,33 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 		}
 	}, [file]);
 
-	const pageNavigationPluginInstance = pageNavigationPlugin({
-		renderPageLabel: (props: { pageIndex: number; totalPages: number }) => {
-			if (selectedRange) {
-				const adjustedPage = props.pageIndex + 1 - selectedRange.start + 1;
-				const totalPages = selectedRange.end - selectedRange.start + 1;
-				return `Page ${adjustedPage} of ${totalPages} (Original: ${selectedRange.start}-${selectedRange.end})`;
+	const pageNavigationPluginInstance = pageNavigationPlugin({});
+
+	const setRenderRange = (visiblePagesRange: VisiblePagesRange) => {
+		if (selectedRange) {
+			return {
+				startPage: selectedRange.start - 1,
+				endPage: selectedRange.end - 1,
+			};
+		}
+		return visiblePagesRange;
+	};
+
+	// Handle range changes and page navigation
+	useEffect(() => {
+		if (selectedRange && pageNavigationPluginInstance) {
+			const start = selectedRange.start - 1; // Convert to 0-based index
+			const end = selectedRange.end - 1;
+
+			// If current page is outside the range, navigate to the nearest valid page
+			if (currentPage < start) {
+				pageNavigationPluginInstance.jumpToPage(start);
+			} else if (currentPage > end) {
+				pageNavigationPluginInstance.jumpToPage(end);
 			}
-			return `Page ${props.pageIndex + 1} of ${props.totalPages}`;
-		},
-	});
+		}
+	}, [selectedRange, currentPage]);
+
 	const defaultLayoutPluginInstance = defaultLayoutPlugin({
 		sidebarTabs: (defaultTabs) => [
 			defaultTabs[0], // Thumbnail tab
@@ -66,12 +84,34 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 
 	const renderPage: RenderPage = ({ canvasLayer, textLayer, annotationLayer, pageIndex }) => {
 		const bufferSize = 250; // render this many pages before and after the current page
-		const isInRange = selectedRange
-			? pageIndex >= selectedRange.start - bufferSize && pageIndex <= selectedRange.end + bufferSize
-			: true;
 
-		if (!isInRange) {
-			return <></>;
+		let start: number;
+		let end: number;
+
+		if (selectedRange) {
+			start = Math.max(pageIndex - bufferSize, selectedRange.start);
+			end = Math.min(pageIndex + bufferSize, selectedRange.end);
+		} else {
+			start = pageIndex - bufferSize;
+			end = pageIndex + bufferSize;
+		}
+		const pageNumber = pageIndex + 1;
+		if (pageNumber < start || pageNumber > end) {
+			return (
+				<div
+					style={{
+						margin: "8px auto",
+						boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+						borderRadius: "4px",
+					}}
+				>
+					<div style={{ position: "static" }}>
+						<div>{canvasLayer.children}</div>
+						<div style={{ position: "static", top: 0, left: 0, right: 0, bottom: 0 }}>{textLayer.children}</div>
+						<div style={{ position: "static", top: 0, left: 0, right: 0, bottom: 0 }}>{annotationLayer.children}</div>
+					</div>
+				</div>
+			);
 		}
 
 		return (
@@ -93,35 +133,56 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 
 	return (
 		<div className="h-full bg-white">
-			{/* The Worker component loads PDF.js in a Web Worker thread to handle PDF parsing and rendering.
-			    This prevents the main UI thread from being blocked during heavy PDF operations. */}
 			<Worker workerUrl="/pdf.worker.min.js">
 				<div style={{ height: "100%", padding: "16px 0" }}>
 					<Viewer
 						fileUrl={fileUrl}
 						plugins={[
-							// Provides the default layout with sidebar, toolbar and menu
 							defaultLayoutPluginInstance,
-							// Enables text search functionality within the PDF
 							searchPluginInstance,
-							// Shows thumbnail previews of pages in the sidebar
 							thumbnailPluginInstance,
-							// Adds zoom in/out and zoom level selection controls
 							zoomPluginInstance,
-							// Handles page navigation and displays current page number
 							pageNavigationPluginInstance,
 						]}
-						onDocumentLoad={() => {
+						onDocumentLoad={(doc: any) => {
 							setLoading(false);
 							if (selectedRange) {
-								pageNavigationPluginInstance.jumpToPage(selectedRange.start - 1);
+								const { start, end } = selectedRange;
+								pageNavigationPluginInstance.jumpToPage(start - 1);
+
+								// Update the total number of pages
+								doc.numPages = end - start + 1;
 							}
 						}}
 						onPageChange={(e) => {
+							setCurrentPage(e.currentPage - 1); // Convert to 0-based index
 							onPageChange?.(e.currentPage);
 						}}
 						renderPage={renderPage}
 						defaultScale={1}
+						className="rpv-viewer"
+						cacheSize={50}
+						characterMap="latin"
+						pageLayout="single"
+						scrollMode="vertical"
+						enableSmoothScroll={true}
+						prefixClass="rpv-"
+						// initialPage={selectedRange ? selectedRange.start - 1 : 0}
+						enablePageWrap={false}
+						setRenderRange={setRenderRange}
+						renderLoader={(percentages: number) => (
+							<div className="flex items-center justify-center p-4">
+								<div className="w-full max-w-sm">
+									<div className="h-2 bg-gray-200 rounded">
+										<div
+											className="h-2 bg-blue-500 rounded transition-all duration-300"
+											style={{ width: `${Math.round(percentages)}%` }}
+										/>
+									</div>
+								</div>
+							</div>
+						)}
+						renderError={(error: Error) => <div className="text-red-500 p-4">Failed to load page: {error.message}</div>}
 					/>
 				</div>
 			</Worker>
