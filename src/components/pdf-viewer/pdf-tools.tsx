@@ -5,8 +5,9 @@ import { PDFDocument } from "pdf-lib";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatFileSize } from "@/lib/utils";
-import { Plus, Minus, FileDown, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Minus, FileDown, Trash2, ChevronDown, Link as LinkIcon } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useToast } from "@/components/ui/use-toast";
 
 interface PDFToolsProps {
 	files: File[];
@@ -18,6 +19,7 @@ interface PDFToolsProps {
 	onCompress?: (compressedFile: File) => void;
 	onDelete?: (file: File) => void;
 	onRangeChange?: (range: { start: number; end: number } | null) => void;
+	onFilesChange?: (files: File[]) => void;
 }
 
 interface Range {
@@ -36,10 +38,68 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 	onCompress,
 	onDelete,
 	onRangeChange,
+	onFilesChange,
 }) => {
 	const [ranges, setRanges] = useState<Range[]>([{ id: "1", start: "", end: "" }]);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
+	const [urlInput, setUrlInput] = useState("");
+	const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+	const [urlError, setUrlError] = useState<string | null>(null);
+	const { toast } = useToast();
+
+	const isValidUrl = (url: string) => {
+		try {
+			new URL(url);
+			return true;
+		} catch {
+			return false;
+		}
+	};
+
+	const handleUrlChange = async (value: string) => {
+		setUrlInput(value);
+		setUrlError(null);
+
+		if (!isValidUrl(value)) {
+			return;
+		}
+
+		setIsLoadingUrl(true);
+		try {
+			const response = await fetch(value);
+			const contentType = response.headers.get("content-type");
+
+			if (!contentType?.includes("application/pdf")) {
+				setUrlError("URL does not point to a valid PDF file");
+				return;
+			}
+
+			const blob = await response.blob();
+			const filename = value.split("/").pop() || "downloaded.pdf";
+			const file = new File([blob], filename, { type: "application/pdf" });
+
+			// Add the file to the list
+			onFileSelect(file);
+			onFilesChange?.([...files, file]);
+			setUrlInput("");
+
+			toast({
+				title: "PDF imported successfully",
+				description: `Imported ${filename} from URL`,
+			});
+		} catch (error) {
+			console.error("Error importing PDF:", error);
+			setUrlError("Failed to fetch PDF from URL");
+			toast({
+				title: "Error importing PDF",
+				description: "Failed to fetch PDF from URL",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoadingUrl(false);
+		}
+	};
 
 	useEffect(() => {
 		if (currentFile !== selectedFile) {
@@ -194,6 +254,29 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 		<div className="flex flex-col gap-4">
 			<div className="space-y-4">
 				<h2 className="text-lg font-semibold">PDF Files</h2>
+				<div className="flex gap-2">
+					<div className="relative flex-1">
+						<Input
+							type="text"
+							placeholder="Paste PDF URL..."
+							value={urlInput}
+							onChange={(e) => handleUrlChange(e.target.value)}
+							className={`pr-8 ${urlError ? "border-red-500" : ""} ${isLoadingUrl ? "bg-gray-50" : ""}`}
+							disabled={isLoadingUrl}
+						/>
+						{isLoadingUrl && (
+							<div className="absolute right-2 top-1/2 -translate-y-1/2">
+								<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+							</div>
+						)}
+						{urlError && (
+							<div className="absolute invisible group-hover:visible bg-red-500 text-white text-xs rounded p-2 -bottom-8 left-0 whitespace-nowrap z-10">
+								{urlError}
+							</div>
+						)}
+						<LinkIcon className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+					</div>
+				</div>
 				{files.map((file, index) => (
 					<Accordion key={index} type="single" collapsible className="border rounded-lg">
 						<AccordionItem value="item-1">
