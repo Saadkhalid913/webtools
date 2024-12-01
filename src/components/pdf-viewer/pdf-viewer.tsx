@@ -163,7 +163,7 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 						renderPage={renderPage}
 						defaultScale={1}
 						// @ts-ignore
-						cacheSize={50}
+						cacheSize={1000}
 						scrollMode={ScrollMode.Vertical}
 						enableSmoothScroll={true}
 						prefixClass="rpv-"
