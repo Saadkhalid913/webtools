@@ -7,6 +7,8 @@ import { searchPlugin } from "@react-pdf-viewer/search";
 import { thumbnailPlugin } from "@react-pdf-viewer/thumbnail";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
+import { ScrollMode } from "@react-pdf-viewer/core";
+import { LoadError } from "@react-pdf-viewer/core";
 
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
@@ -160,14 +162,11 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 						}}
 						renderPage={renderPage}
 						defaultScale={1}
-						className="rpv-viewer"
+						// @ts-ignore
 						cacheSize={50}
-						characterMap="latin"
-						pageLayout="single"
-						scrollMode="vertical"
+						scrollMode={ScrollMode.Vertical}
 						enableSmoothScroll={true}
 						prefixClass="rpv-"
-						// initialPage={selectedRange ? selectedRange.start - 1 : 0}
 						enablePageWrap={false}
 						setRenderRange={setRenderRange}
 						renderLoader={(percentages: number) => (
@@ -182,7 +181,9 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 								</div>
 							</div>
 						)}
-						renderError={(error: Error) => <div className="text-red-500 p-4">Failed to load page: {error.message}</div>}
+						renderError={(error: LoadError) => (
+							<div className="text-red-500 p-4">Failed to load page: {error.message}</div>
+						)}
 					/>
 				</div>
 			</Worker>

@@ -56,44 +56,45 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 	};
 
 	const handleRangeChange = (index: number, field: keyof Range, value: string) => {
-		const newValue = value === "" ? "" : Math.max(1, parseInt(value) || 1).toString();
 		const newRanges = [...ranges];
-		newRanges[index] = { ...newRanges[index], [field]: newValue };
-
-		// Ensure start is not greater than end
-		if (field === "start" && newValue !== "") {
-			const start = parseInt(newValue);
-			const end = parseInt(newRanges[index].end);
-			if (!isNaN(end) && start > end) {
-				newRanges[index].end = newValue;
-			}
-		}
-		if (field === "end" && newValue !== "") {
-			const end = parseInt(newValue);
-			const start = parseInt(newRanges[index].start);
-			if (!isNaN(start) && end < start) {
-				newRanges[index].start = newValue;
-			}
-		}
-
-		// Ensure values don't exceed page count
-		if (newValue !== "" && parseInt(newValue) > pageCount) {
-			newRanges[index][field] = pageCount.toString();
-		}
-
+		newRanges[index] = { ...newRanges[index], [field]: value };
 		setRanges(newRanges);
 
-		// Update preview with the current range if valid
-		const start = parseInt(newRanges[index].start);
-		const end = parseInt(newRanges[index].end);
-
-		if (!isNaN(start) && !isNaN(end) && start > 0 && end <= pageCount && start <= end) {
-			if (selectedRangeId === newRanges[index].id) {
+		// Update preview if this is the selected range and it's valid
+		if (selectedRangeId === newRanges[index].id) {
+			const start = parseInt(newRanges[index].start);
+			const end = parseInt(newRanges[index].end);
+			if (!isNaN(start) && !isNaN(end) && start > 0 && end <= pageCount && start <= end) {
 				onRangeChange?.({ start, end });
+			} else {
+				onRangeChange?.(null);
 			}
-		} else if (selectedRangeId === newRanges[index].id) {
-			onRangeChange?.(null);
 		}
+	};
+
+	const isRangeValid = (range: Range) => {
+		const start = parseInt(range.start);
+		const end = parseInt(range.end);
+		return !isNaN(start) && !isNaN(end) && start > 0 && end <= pageCount && start <= end;
+	};
+
+	const getRangeError = (range: Range): string | null => {
+		const start = parseInt(range.start);
+		const end = parseInt(range.end);
+
+		if (isNaN(start) || isNaN(end)) {
+			return "Please enter valid numbers";
+		}
+		if (start <= 0 || end <= 0) {
+			return "Page numbers must be greater than 0";
+		}
+		if (start > pageCount || end > pageCount) {
+			return `Page numbers must not exceed ${pageCount}`;
+		}
+		if (start > end) {
+			return "Start page must not be greater than end page";
+		}
+		return null;
 	};
 
 	const handleAddRange = () => {
@@ -253,31 +254,32 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 												onClick={() => handleRangeSelect(range)}
 											>
 												<div className="flex items-center gap-2">
-													<Input
-														type="number"
-														min="1"
-														max={pageCount}
-														placeholder="Start"
-														value={range.start}
-														onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-															handleRangeChange(index, "start", e.target.value)
-														}
-														className="w-20"
-														onClick={(e) => e.stopPropagation()}
-													/>
+													<div className="relative group">
+														<Input
+															type="number"
+															placeholder="Start"
+															value={range.start}
+															onChange={(e) => handleRangeChange(index, "start", e.target.value)}
+															className={`w-20 ${!isRangeValid(range) ? "border-red-300" : ""}`}
+															onClick={(e) => e.stopPropagation()}
+														/>
+														{getRangeError(range) && (
+															<div className="absolute invisible group-hover:visible bg-gray-800 text-white text-xs rounded p-2 -bottom-8 left-0 whitespace-nowrap z-10">
+																{getRangeError(range)}
+															</div>
+														)}
+													</div>
 													<span>to</span>
-													<Input
-														type="number"
-														min="1"
-														max={pageCount}
-														placeholder="End"
-														value={range.end}
-														onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-															handleRangeChange(index, "end", e.target.value)
-														}
-														className="w-20"
-														onClick={(e) => e.stopPropagation()}
-													/>
+													<div className="relative group">
+														<Input
+															type="number"
+															placeholder="End"
+															value={range.end}
+															onChange={(e) => handleRangeChange(index, "end", e.target.value)}
+															className={`w-20 ${!isRangeValid(range) ? "border-red-300" : ""}`}
+															onClick={(e) => e.stopPropagation()}
+														/>
+													</div>
 													<Button
 														variant="ghost"
 														size="sm"
@@ -298,13 +300,8 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 										<Button
 											onClick={handleExtractRanges}
 											className="w-full"
-											disabled={
-												!ranges.some((range) => {
-													const start = parseInt(range.start);
-													const end = parseInt(range.end);
-													return !isNaN(start) && !isNaN(end) && start > 0 && end <= pageCount && start <= end;
-												})
-											}
+											disabled={!ranges.some(isRangeValid)}
+											title={ranges.some(isRangeValid) ? undefined : "Please enter valid page ranges"}
 										>
 											Extract Pages
 										</Button>
