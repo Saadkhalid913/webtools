@@ -207,12 +207,12 @@ export const PDFContainer: React.FC = () => {
 	}, [handleKeyNavigation]);
 
 	return (
-		<div className="container mx-auto p-4 h-screen">
+		<div className="container mx-auto p-4 h-screen max-w-full">
 			<div className="flex flex-col h-full gap-4">
-				<header className="flex justify-between items-center">
+				<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
 					<h1 className="text-2xl font-bold">PDF Tools Suite</h1>
-					<div className="flex gap-2">
-						<Button variant="outline" size="sm" asChild>
+					<div className="flex gap-2 w-full sm:w-auto">
+						<Button variant="outline" size="sm" className="flex-1 sm:flex-none" asChild>
 							<label>
 								<Upload className="w-4 h-4 mr-2" />
 								Open PDF
@@ -222,6 +222,7 @@ export const PDFContainer: React.FC = () => {
 						<Button
 							variant="outline"
 							size="sm"
+							className="flex-1 sm:flex-none"
 							disabled={!currentFile}
 							onClick={() => {
 								if (currentFile) {
@@ -238,8 +239,8 @@ export const PDFContainer: React.FC = () => {
 					</div>
 				</header>
 
-				<div className="flex gap-4 flex-1 min-h-0">
-					<div className="w-1/3 bg-white rounded-lg shadow p-4 overflow-y-auto">
+				<div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+					<div className="w-full lg:w-1/3 bg-white rounded-lg shadow p-4 overflow-y-auto order-2 lg:order-1">
 						<PDFTools
 							files={files}
 							currentFile={currentFile}
@@ -267,7 +268,7 @@ export const PDFContainer: React.FC = () => {
 							onFilesChange={setFiles}
 						/>
 					</div>
-					<div className="flex-1 bg-white rounded-lg shadow overflow-hidden">
+					<div className="flex-1 bg-white rounded-lg shadow overflow-hidden order-1 lg:order-2 h-[50vh] lg:h-auto">
 						<PreviewWindow
 							file={currentFile}
 							selectedRange={currentFile ? fileRanges[currentFile.id] || null : null}

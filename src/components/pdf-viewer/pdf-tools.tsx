@@ -352,6 +352,7 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 						size="sm"
 						onClick={() => handleUrlChange(urlInput)}
 						disabled={isLoadingUrl || !isValidUrl(urlInput)}
+						className="shrink-0"
 					>
 						{isLoadingUrl ? (
 							<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900" />
@@ -363,7 +364,7 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 				{urlError && <p className="text-sm text-red-500">{urlError}</p>}
 			</div>
 
-			<div className="text-sm text-gray-500">
+			<div className="text-sm text-gray-500 hidden lg:block">
 				<p>Keyboard shortcuts:</p>
 				<ul className="list-disc list-inside ml-2">
 					<li>Ctrl/⌘ + ↑: Previous PDF</li>
@@ -374,33 +375,41 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 
 			<Accordion type="single" collapsible className="w-full">
 				<AccordionItem value="files">
-					<AccordionTrigger>PDF Files</AccordionTrigger>
+					<AccordionTrigger className="hover:no-underline">
+						<div className="flex items-center justify-between w-full">
+							<span>PDF Files</span>
+							<span className="text-sm text-gray-500">
+								{files.length} file{files.length !== 1 ? "s" : ""}
+							</span>
+						</div>
+					</AccordionTrigger>
 					<AccordionContent>
 						<div className="flex flex-col gap-2">
 							{files.map((file) => (
 								<div
 									key={file.id}
-									className={`flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer ${
-										currentFile === file ? "bg-gray-100" : ""
+									className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+										currentFile === file ? "border-blue-500 bg-blue-50/50" : "border-gray-200 hover:border-gray-300"
 									}`}
 									onClick={() => handleFileSelect(file)}
 								>
 									<div className="flex-1 min-w-0">
 										<p className="text-sm font-medium truncate">{file.name}</p>
-										<p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+										<p className="text-xs text-gray-500">
+											{formatFileSize(file.size)} • {file.totalPages} page{file.totalPages !== 1 ? "s" : ""}
+										</p>
 									</div>
-									{onDelete && (
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={(e) => {
-												e.stopPropagation();
-												onDelete(file);
-											}}
-										>
-											<Trash2 className="w-4 h-4" />
-										</Button>
-									)}
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={(e) => {
+											e.stopPropagation();
+											onDelete?.(file);
+										}}
+										className="text-gray-500 hover:text-red-500 shrink-0"
+									>
+										<Trash2 className="w-4 h-4" />
+									</Button>
 								</div>
 							))}
 						</div>
@@ -420,8 +429,10 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 						<AccordionContent>
 							<div className="flex flex-col gap-4">
 								<div className="flex justify-between items-center">
-									<p className="text-sm text-gray-500">Total pages: {currentFile.totalPages}</p>
-									<Button variant="outline" size="sm" onClick={handleAddRange}>
+									<p className="text-sm text-gray-500">
+										{currentFile.totalPages} page{currentFile.totalPages !== 1 ? "s" : ""} total
+									</p>
+									<Button variant="outline" size="sm" onClick={handleAddRange} className="shrink-0">
 										<Plus className="w-4 h-4 mr-2" />
 										Add Range
 									</Button>
@@ -436,9 +447,9 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 										}`}
 										onClick={() => handleRangeSelect(range)}
 									>
-										<div className="flex-1 flex items-center gap-2">
+										<div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2">
 											<div className="flex items-center gap-2">
-												<span className="text-sm text-gray-500">From</span>
+												<span className="text-sm text-gray-500 shrink-0">From</span>
 												<Input
 													type="number"
 													min={1}
@@ -450,7 +461,7 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 												/>
 											</div>
 											<div className="flex items-center gap-2">
-												<span className="text-sm text-gray-500">to</span>
+												<span className="text-sm text-gray-500 shrink-0">to</span>
 												<Input
 													type="number"
 													min={1}
@@ -469,7 +480,7 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 												e.stopPropagation();
 												handleRemoveRange(index);
 											}}
-											className="text-gray-500 hover:text-red-500"
+											className="text-gray-500 hover:text-red-500 shrink-0"
 										>
 											<Trash2 className="w-4 h-4" />
 										</Button>
@@ -487,7 +498,7 @@ export const PDFTools: React.FC<PDFToolsProps> = ({
 
 				{files.length > 1 && (
 					<AccordionItem value="actions">
-						<AccordionTrigger>Actions</AccordionTrigger>
+						<AccordionTrigger className="hover:no-underline">Actions</AccordionTrigger>
 						<AccordionContent>
 							<div className="flex flex-col gap-2">
 								<Button variant="outline" size="sm" onClick={handleMergePDFs}>
