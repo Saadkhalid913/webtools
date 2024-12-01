@@ -53,7 +53,7 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 	// Handle range changes and page navigation
 	useEffect(() => {
 		if (selectedRange && pageNavigationPluginInstance) {
-			const start = selectedRange.start - 1; // Convert to 0-based index
+			const start = selectedRange.start - 1;
 			const end = selectedRange.end - 1;
 
 			// If current page is outside the range, navigate to the nearest valid page
@@ -134,9 +134,9 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 	};
 
 	return (
-		<div className="h-full bg-white">
+		<div className="h-full bg-white relative">
 			<Worker workerUrl="/pdf.worker.min.js">
-				<div style={{ height: "100%", padding: "16px 0" }}>
+				<div style={{ height: "100%", padding: "16px 0" }} className={loading ? "opacity-50" : ""}>
 					<Viewer
 						fileUrl={fileUrl}
 						plugins={[
@@ -188,8 +188,11 @@ export const PreviewWindow: React.FC<PreviewWindowProps> = ({ file, selectedRang
 				</div>
 			</Worker>
 			{loading && (
-				<div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+				<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+					<div className="flex flex-col items-center gap-2 bg-white p-4 rounded-lg shadow-lg">
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+						<span className="text-sm text-gray-600">Loading PDF...</span>
+					</div>
 				</div>
 			)}
 		</div>
